@@ -20,6 +20,9 @@ interface IBotStore {
 }
 const botStore: IBotStore = {};
 
+console.log('Fake video path - ', process.env.FAKE_VIDEO_PATH);
+console.log('Fake audio path - ', process.env.FAKE_AUDIO_PATH);
+
 // const asyncSleep = (timeout: number = 500) => new Promise(resolve => setTimeout(resolve, timeout ));
 const logger = (...args: any[]) => {
     const d = new Date();
@@ -33,7 +36,7 @@ const joinTable = async (url: string, userId: number) => {
     };
 
     const browser = await chromium.launch({
-        headless: false,
+        headless: true,
         args: [
             `--ignore-https-errors`,
             `--ignore-certificate-errors`,
@@ -41,8 +44,8 @@ const joinTable = async (url: string, userId: number) => {
             `--use-fake-device-for-media-stream`,
             `--use-fake-ui-for-media-stream`,
             `--no-sandbox`,
-            `--use-file-for-fake-video-capture=/Users/priyanjitdey/Documents/work/airmeet/airmeet-bot-framework/dist/test.Y4M`,
-            `--use-file-for-fake-audio-capture=/Users/priyanjitdey/Documents/work/airmeet/airmeet-bot-framework/dist/test.wav`,
+            `--use-file-for-fake-video-capture=${process.env.FAKE_VIDEO_PATH}`,
+            `--use-file-for-fake-audio-capture=${process.env.FAKE_AUDIO_PATH}`,
         ]
     });
 
@@ -144,7 +147,7 @@ interface ISpawnReq {
     botCount: number;    
 }
 
-const PORT = process.env.PORT || 9123;
+const PORT = process.env.PORT || 6020;
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
