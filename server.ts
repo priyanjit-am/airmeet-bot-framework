@@ -40,7 +40,7 @@ const joinTable = async (url: string, userId: number) => {
         args: [
             `--ignore-https-errors`,
             `--ignore-certificate-errors`,
-            // `--disable-gl-drawing-for-tests`,
+            `--disable-gl-drawing-for-tests`,
             `--use-fake-device-for-media-stream`,
             `--use-fake-ui-for-media-stream`,
             `--no-sandbox`,
@@ -76,13 +76,17 @@ const joinTable = async (url: string, userId: number) => {
     await page.locator('#event-details-header').getByRole('button', { name: 'Enter event' }).click();
     infoLog('Click Enter Event')
 
-    const firstNameLocator = page.locator('[id="03067638-d058-4d06-bfe7-59ae176e03a5"]');
-    await firstNameLocator.waitFor();
-    firstNameLocator.fill(`botUser-fn-${userId}`);
-
-    const lastNameLocator = page.locator('[id="180b03ad-e47b-44cc-bfab-4375d598afeb"]');
-    await lastNameLocator.waitFor();
-    lastNameLocator.fill(`botUser-ln-${userId}`);
+    // const firstNameLocator = page.locator('[id="03067638-d058-4d06-bfe7-59ae176e03a5"]');
+    // await firstNameLocator.waitFor();
+    // firstNameLocator.fill(`botUser-fn-${userId}`);
+    await page.getByLabel('First Name*').click();
+    await page.getByLabel('First Name*').fill(`botUser-fn-${userId}`);
+    
+    // const lastNameLocator = page.locator('[id="180b03ad-e47b-44cc-bfab-4375d598afeb"]');
+    // await lastNameLocator.waitFor();
+    // lastNameLocator.fill(`botUser-ln-${userId}`);
+    await page.getByLabel('Last Name*').click();
+    await page.getByLabel('Last Name*').fill(`botUser-ln-${userId}`);
 
     infoLog('Name is typed');
 
