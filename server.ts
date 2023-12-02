@@ -5,7 +5,7 @@ dotenv.config();
 import bodyParser from 'body-parser';
 const cors = require('cors');
 
-import { chromium } from 'playwright';
+import { Page, chromium } from 'playwright';
 import { expect } from '@playwright/test';
 
 interface IBot {
@@ -36,7 +36,7 @@ const joinTable = async (url: string, userId: number) => {
     };
 
     const browser = await chromium.launch({
-        headless: true,
+        headless: false,
         args: [
             `--ignore-https-errors`,
             `--ignore-certificate-errors`,
@@ -97,8 +97,13 @@ const joinTable = async (url: string, userId: number) => {
 
     const middleFooterLocator = page.locator('.middle-footer');
     await middleFooterLocator.waitFor();
-    await middleFooterLocator.getByRole('button').nth(0);
+    const videoBtn = middleFooterLocator.getByRole('button').nth(0);
+    const audioBtn = middleFooterLocator.getByRole('button').nth(1);
     infoLog('Joined table');
+
+    const isVideoDisabled = await videoBtn.isDisabled();
+    const isAudioDisabled = await audioBtn.isDisabled();
+    infoLog(`A/V status. Audio - ${isAudioDisabled}, Video - ${isVideoDisabled}`);
 };
 const leaveTable = async (url: string, userId: number) => {
     const infoLog = (...args: any[]) => {
@@ -106,8 +111,10 @@ const leaveTable = async (url: string, userId: number) => {
         console.log(`${d.getHours()}:${d.getMinutes()}:${d.getSeconds() < 10 ? `0${d.getSeconds()}` : d.getSeconds()}`, `Bot-${userId} Info: `, ...args);
     };
 
-    const bot = botStore[url]?.bots?.find(b => b.id === userId);
-    if (!bot?.page) return;
+    const bot = botStore[url]?.bots?.find(b => b.id == userId);
+    if (!bot?.page) {
+        throw new Error(`Kill: Cannot find page instance of ${userId} in ${url}`);
+    }
 
     const { browser, page } = bot;
 
@@ -131,8 +138,55 @@ const leaveTable = async (url: string, userId: number) => {
         await browser.close();
         infoLog('Browser closed');
     }
+
+    return true;
 }
 
+const toggleMedia = async (url: string, userId: number, media: 'audio' | 'video') => {
+    const infoLog = (...args: any[]) => {
+        const d = new Date();
+        console.log(`${d.getHours()}:${d.getMinutes()}:${d.getSeconds() < 10 ? `0${d.getSeconds()}` : d.getSeconds()}`, `Bot-${userId} Info: `, ...args);
+    };
+
+    const bot = botStore[url]?.bots?.find(b => b.id == userId);
+    if (!bot?.page) {
+        throw new Error(`Toggle-Media: Cannot find page instance of ${userId} in ${url}`);
+    };
+
+    const page: Page = bot.page;
+    let ans: any = {};
+
+    if (page) {
+        const middleFooterLocator = page.locator('.middle-footer');
+        await middleFooterLocator.waitFor();
+        const videoBtn = middleFooterLocator.getByRole('button').nth(0);
+        const audioBtn = middleFooterLocator.getByRole('button').nth(1);
+
+        if (media === 'audio' || !media) {
+            const isAudioVisible = await audioBtn.isVisible();
+            const isAudioDisabled = await audioBtn.isDisabled();
+
+            if (isAudioVisible && !isAudioDisabled) {
+                await audioBtn.click();
+                infoLog('toggle audio');
+                ans.audio = true;
+            }
+        }
+
+        if (media === 'video' || !media) {
+            const isVideoVisible = await videoBtn.isVisible();
+            const isVideoDisabled = await videoBtn.isDisabled();
+
+            if (isVideoVisible && !isVideoDisabled) {
+                await videoBtn.click();
+                infoLog('toggle video');
+                ans.video = true;
+            }
+        }
+    }
+
+    return ans;
+}
 // const driver = async (botCount = 20) => {
 //     for (let i = 0; i < botCount; i++) {
 //         console.log(`Spawning bot ${i}`);
@@ -194,13 +248,18 @@ app.post('/kill', async (req: any, res: any) => {
     const { url } = req.body;
 
     const botLength = botStore[url]?.bots?.length;
+    const ans: any = {
+        [url]: {}
+    }
     if (botLength) {
         for (let i = 0; i < botLength; i++) {
             const bot = botStore[url].bots[i];
             try {
                 await leaveTable(url, bot.id);
+                ans[url][bot.id] = true;
                 console.log(`Killed bot - ${bot.id} in url - ${url}`, );
             } catch(err) {
+                ans[url][bot.id] = false;
                 console.log('Error while killing bot - ', bot.id, err?.toString());
             }
         }
@@ -208,9 +267,27 @@ app.post('/kill', async (req: any, res: any) => {
         delete botStore[url];
     }
     res.status(200).json({
-        msg: `Killed ${botLength} bots`
+        msg: `Killed ${botLength} bots`,
+        status: ans
     });
 });
+
+app.post('/toggle-media', async (req, res) => {
+    const { url, id, mediaType } = req.body;
+
+    let ans: any = {
+        [url]: {}
+    };
+    try {
+        ans[url] = await toggleMedia(url, id, mediaType);
+    } catch(err) {
+        ans[url] = { error: `failed to toggle - ${err?.toString()}` };
+    }
+
+    res.status(200).json({
+        status: ans
+    });
+})
 
 
 app.listen(PORT, () => {
