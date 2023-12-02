@@ -36,7 +36,7 @@ const joinTable = async (url: string, userId: number) => {
     };
 
     const browser = await chromium.launch({
-        headless: false,
+        headless: true,
         args: [
             `--ignore-https-errors`,
             `--ignore-certificate-errors`,
